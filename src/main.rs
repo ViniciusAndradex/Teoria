@@ -4,7 +4,13 @@ fn replace(original: &str, alter: &str, to: &str) -> String{
     let words_index = identify_word(original, alter);
 
     for vec in words_index {
-
+        for i in 0..vec.len() {
+            if i <= alter.len() {
+                original_vec[vec[i]] = altered[i];
+            } else {
+                original_vec.insert(i, altered[i]);
+            }
+        }
     }
 
     original_vec.iter().collect::<String>()
@@ -17,7 +23,6 @@ fn identify_word(original: &str, alter: &str) -> Vec<Vec<usize>> {
     let mut word: usize = 0;
 
     for letter in original.chars() {
-        print!("{}", letter);
         if result.len() <= word {
             result.resize_with(word + 1, Vec::new);
         }
