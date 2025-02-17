@@ -1,13 +1,5 @@
-use lazy_static::lazy_static;
-use std::sync::Mutex;
-
-lazy_static! {
-    static ref SPECIAL_NUMS: Mutex<Vec<i32>> = Mutex::new(vec![0]);
-    static ref ALPHA: Mutex<Vec<char>> = Mutex::new(vec!['a']);
-}
 fn replace(original: &str, regex: &str, to: &str) -> String {
     let alter = regex_analizy(regex).unwrap();
-    println!("{}", alter.0.clone().into_iter().collect::<String>());
     replacement(original, alter.0, to, alter.1)
 }
 
@@ -20,7 +12,6 @@ fn replacement(original: &str, alter: Vec<char>, to: &str, regex: Vec<Regex>) ->
         return result;
     }
     let mut count = 0;
-    let mut index = words_index[words_index.len() - 1] + 1;
 
     for inner_index in words_index.clone() {
         if count == letter_to.len() {
@@ -30,6 +21,7 @@ fn replacement(original: &str, alter: Vec<char>, to: &str, regex: Vec<Regex>) ->
         count += 1;
     }
     if words_index.len() < letter_to.len() {
+        let mut index = words_index[words_index.len() - 1] + 1;
         loop {
             if count == letter_to.len() {
                 break;
@@ -39,6 +31,8 @@ fn replacement(original: &str, alter: Vec<char>, to: &str, regex: Vec<Regex>) ->
             index += 1;
         }
     } else {
+        let mut index = words_index[words_index.len() - 1];
+
         loop {
             if count == words_index.len() {
                 break;
@@ -64,23 +58,22 @@ fn identify_word(original: &str, alter: Vec<char>, regex: &Vec<Regex>) -> Vec<us
     let last_char = alter.len() - 1;
     let mut agrupar: bool = false;
     let mut fecho: bool = false;
-    let mut set: bool = false;
-
     for t in regex {
         match t {
             Regex::Fecho => fecho = true,
             Regex::Agrupar => agrupar = true,
-            Regex::Set => set = true,
         }
     }
-    for (pos, letter) in original.chars().enumerate() {
-        if count <= alter.len() - 1 {
-            if set && letter == '#' {}
+    let to_char = original.chars();
+    for (pos, letter) in to_char.clone().enumerate() {
+        if count < alter.len() - 1 {
             if letter == alter[count] {
                 result.push(pos);
                 count += 1;
             }
-            if count == alter.len() - 1 {
+        } else if count == alter.iter().len() -1 {
+            if letter == alter[count] {
+                result.push(pos);
                 count += 1;
             }
         } else if letter == alter[last_char] && count != 0 && fecho && !agrupar {
@@ -93,87 +86,37 @@ fn identify_word(original: &str, alter: Vec<char>, regex: &Vec<Regex>) -> Vec<us
     if result.len() <= alter.len() - 2 {
         result.clear();
     }
-
     result
 }
 
 enum Regex {
     Fecho,
     Agrupar,
-    Set,
 }
-fn history_values(one: char, two: char) {
-    if one == '\\' && two == 'd' {
-        let mut special = SPECIAL_NUMS.lock().unwrap();
-        special.extend(0..9);
-    } else {
-        let mut alp = ALPHA.lock().unwrap();
-        alp.extend(one..two);
-    }
-}
-
 fn regex_analizy(regex: &str) -> Option<(Vec<char>, Vec<Regex>)> {
     let mut vec_regex: Vec<char> = regex.chars().collect();
     let mut get_symbols: Vec<Regex> = Vec::new();
-    let mut indexes_set: Vec<char> = Vec::new();
-    let mut agrupar = false;
-    let mut fecho = false;
-    let mut set = false;
-    let mut loop_count = 0;
-    loop {
-        for (index, symbol) in vec_regex.clone().iter().enumerate() {
-            if *symbol == '*' {
-                if loop_count == 2 {
-                    vec_regex.remove(index);
-                }
-                fecho = true;
-            }
-
-            if *symbol == '(' || *symbol == ')' {
-                if loop_count == 1 {
-                    vec_regex.remove(index);
-                }
-                agrupar = true;
-            }
-            if *symbol == '[' || *symbol == ']' {
-                if loop_count == 0 {
-                    if *symbol == '[' {
-                        indexes_set.push(vec_regex[index + 1]);
-                        if vec_regex[index + 1] == '\\' {
-                            vec_regex.insert(index - 1, '%');
-                        } else {
-                            vec_regex.insert(index - 1, '#')
-                        }
-                    } else {
-                        indexes_set.push(vec_regex[index - 1]);
-                        if vec_regex[index - 3] == '[' {
-                            vec_regex.drain((index - 3)..index);
-                        } else {
-                            vec_regex.drain((index - 2)..index);
-                        }
-                    }
-                }
-                set = true;
-            }
+    let mut indexes: Vec<usize> = Vec::new();
+    for (index, symbol) in vec_regex.clone().iter().enumerate() {
+        if *symbol == '*' {
+            indexes.push(index);
+            get_symbols.push(Regex::Fecho);
         }
-        loop_count += 1;
-        if loop_count > 2 {
-            break;
+        if *symbol == '(' || *symbol == ')' {
+            if *symbol == '(' {
+                indexes.push(index);
+            } else {
+                indexes.push(index);
+                get_symbols.push(Regex::Agrupar)
+            }
         }
     }
 
-    if !indexes_set.is_empty() {
-        history_values(indexes_set[0], indexes_set[1]);
-    }
-
-    if fecho {
-        get_symbols.push(Regex::Fecho);
-    }
-    if agrupar {
-        get_symbols.push(Regex::Agrupar);
-    }
-    if set {
-        get_symbols.push(Regex::Set);
+    if !indexes.is_empty() {
+        for (ind, value) in indexes.iter().enumerate() {
+            let index = value - ind;
+            vec_regex.remove(index);
+        }
     }
     if get_symbols.is_empty() {
         return None;
